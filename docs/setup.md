@@ -100,7 +100,7 @@ Log in to the dashboard, click "Add site", and give it a name and its URL. You g
 <script defer data-site="your-site-id" src="https://analytics.yourdomain.com/t.js?s=your-site-id"></script>
 ```
 
-Put it once in your site's `<head>`. That single line handles pageviews, the live heartbeat, outbound-link clicks, and the server-side AI-crawler detection. There is nothing else to install.
+Put it once in your site's `<head>`. That line handles browser pageviews, heartbeats and outbound clicks. It also observes crawlers that request the script. To observe HTML crawls that never request it, enable the per-site server log collector; see [crawler collection](crawler-collection.md).
 
 ### Privacy default, and the optional precise mode
 

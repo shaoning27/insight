@@ -2,7 +2,8 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install --no-audit --no-fund --legacy-peer-deps
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm ci --registry="$NPM_REGISTRY" --no-audit --no-fund --legacy-peer-deps
 
 
 FROM node:24-alpine AS builder
@@ -10,7 +11,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN npm test && npm run build
 
 FROM node:24-alpine AS runner
 WORKDIR /app

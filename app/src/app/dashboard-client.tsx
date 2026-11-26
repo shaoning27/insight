@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type Syntheti
 import { createPortal } from 'react-dom';
 import { Area, Bar, CartesianGrid, Cell, ComposedChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import dynamic from 'next/dynamic';
+import ServerCollector from './server-collector';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -1328,7 +1329,7 @@ function AiCard({ data, period }: { data: Stats | null; period: Period }) {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#ffa950]/15 text-[#b06a1f] dark:bg-[#ffa950]/10 dark:text-[#ffa950]"><BotIcon /></span>
           <div className="min-w-0">
             <h3 className="head truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">AI &amp; crawlers</h3>
-            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">crawls · last {windowDays} days</p>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">crawls · last {windowDays} days · UA identity unverified</p>
           </div>
         </div>
         {!selected && (
@@ -1925,8 +1926,9 @@ function ScriptModal({ site, onClose }: { site: SiteItem; onClose: () => void })
   return (
     <Overlay onClose={onClose}>
       <h3 className="head mb-1 text-lg font-bold text-zinc-900 dark:text-zinc-50">Tracking script — {site.name}</h3>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">One line in your site&apos;s <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">&lt;head&gt;</code>. It also detects AI crawlers automatically, nothing else to install.</p>
+      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">One line in your site&apos;s <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">&lt;head&gt;</code>. Crawler requests to this script are detected by User-Agent. Enable server log collection below to observe HTML crawls that never load it.</p>
       <Snippet id={site.id} />
+      <ServerCollector site={site} />
       <div className="mt-5 flex justify-end"><button onClick={onClose} className="btn-primary">Done</button></div>
     </Overlay>
   );
@@ -1997,7 +1999,7 @@ function UrlModal({ site, onClose, onDone }: { site: SiteItem; onClose: () => vo
   return (
     <Overlay onClose={onClose}>
       <h3 className="head mb-1 text-lg font-bold text-zinc-900 dark:text-zinc-50">Website URL — {site.name}</h3>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">The site&apos;s address. It is required for the favicon and for Search Console keywords.</p>
+      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">The site&apos;s address. It is required for the favicon and Search Console. Changing or clearing the hostname revokes server collection tokens and restores script mode.</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();

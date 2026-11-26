@@ -10,49 +10,52 @@ export interface BotInfo {
 }
 
 // Order matters: the most specific tokens come first (e.g. Claude-User before ClaudeBot).
-const BOTS: { token: RegExp; bot_name: string; vendor: string; category: BotCategory }[] = [
-  // OpenAI
-  { token: /ChatGPT-User/i, bot_name: 'ChatGPT', vendor: 'openai', category: 'answer' },
-  { token: /OAI-SearchBot/i, bot_name: 'OAI-SearchBot', vendor: 'openai', category: 'search' },
-  { token: /GPTBot/i, bot_name: 'GPTBot', vendor: 'openai', category: 'training' },
-  // Anthropic
-  { token: /Claude-User/i, bot_name: 'Claude', vendor: 'anthropic', category: 'answer' },
-  { token: /Claude-SearchBot/i, bot_name: 'Claude-SearchBot', vendor: 'anthropic', category: 'search' },
-  { token: /ClaudeBot|anthropic-ai/i, bot_name: 'ClaudeBot', vendor: 'anthropic', category: 'training' },
-  // Perplexity
-  { token: /Perplexity-User/i, bot_name: 'Perplexity', vendor: 'perplexity', category: 'answer' },
-  { token: /PerplexityBot/i, bot_name: 'PerplexityBot', vendor: 'perplexity', category: 'search' },
-  // Google
-  { token: /Google-Extended/i, bot_name: 'Google-Extended', vendor: 'google', category: 'training' },
-  { token: /Google-CloudVertexBot|GoogleAgent-Mariner|Google-NotebookLM/i, bot_name: 'Gemini', vendor: 'google', category: 'answer' },
-  { token: /GoogleOther/i, bot_name: 'GoogleOther', vendor: 'google', category: 'search' },
-  { token: /Googlebot/i, bot_name: 'Googlebot', vendor: 'google', category: 'search' },
-  // Microsoft / Bing
-  { token: /BingBot|bingbot|msnbot|MicrosoftPreview/i, bot_name: 'Bing', vendor: 'microsoft', category: 'search' },
-  // Amazon
-  { token: /Amazonbot/i, bot_name: 'Amazon', vendor: 'amazon', category: 'search' },
-  // Apple
-  { token: /Applebot-Extended/i, bot_name: 'Applebot-Extended', vendor: 'apple', category: 'training' },
-  { token: /Applebot/i, bot_name: 'Apple', vendor: 'apple', category: 'search' },
-  // Meta
-  { token: /meta-externalagent|FacebookBot|meta-externalfetcher/i, bot_name: 'Meta', vendor: 'meta', category: 'training' },
-  // xAI (Grok)
-  { token: /xai|grok/i, bot_name: 'Grok', vendor: 'xai', category: 'answer' },
-  // DuckDuckGo
-  { token: /DuckAssistBot/i, bot_name: 'DuckDuckGo', vendor: 'duckduckgo', category: 'answer' },
-  { token: /DuckDuckBot|DuckDuckGo-Favicons-Bot/i, bot_name: 'DuckDuckGo', vendor: 'duckduckgo', category: 'search' },
-  // Others
-  { token: /Bytespider/i, bot_name: 'Bytespider', vendor: 'bytedance', category: 'training' },
-  { token: /CCBot/i, bot_name: 'CCBot', vendor: 'commoncrawl', category: 'training' },
-  { token: /cohere-ai|cohere-training-data-crawler/i, bot_name: 'Cohere', vendor: 'cohere', category: 'training' },
-  { token: /Timpibot/i, bot_name: 'Timpi', vendor: 'timpi', category: 'training' },
-  { token: /YouBot/i, bot_name: 'You.com', vendor: 'you', category: 'search' },
+export const BOT_CATALOG: (BotInfo & { tokens: string[] })[] = [
+  {"tokens": ["ChatGPT-User"], "bot_name": "ChatGPT", "vendor": "openai", "category": "answer"},
+  {"tokens": ["OAI-SearchBot"], "bot_name": "OAI-SearchBot", "vendor": "openai", "category": "search"},
+  {"tokens": ["GPTBot"], "bot_name": "GPTBot", "vendor": "openai", "category": "training"},
+  {"tokens": ["Claude-User"], "bot_name": "Claude", "vendor": "anthropic", "category": "answer"},
+  {"tokens": ["Claude-SearchBot"], "bot_name": "Claude-SearchBot", "vendor": "anthropic", "category": "search"},
+  {"tokens": ["ClaudeBot", "anthropic-ai"], "bot_name": "ClaudeBot", "vendor": "anthropic", "category": "training"},
+  {"tokens": ["Perplexity-User"], "bot_name": "Perplexity", "vendor": "perplexity", "category": "answer"},
+  {"tokens": ["PerplexityBot"], "bot_name": "PerplexityBot", "vendor": "perplexity", "category": "search"},
+  {"tokens": ["Google-Extended"], "bot_name": "Google-Extended", "vendor": "google", "category": "training"},
+  {"tokens": ["Google-CloudVertexBot", "GoogleAgent-Mariner", "Google-NotebookLM"], "bot_name": "Gemini", "vendor": "google", "category": "answer"},
+  {"tokens": ["GoogleOther", "GoogleOther-Image", "GoogleOther-Video"], "bot_name": "GoogleOther", "vendor": "google", "category": "search"},
+  {"tokens": ["Googlebot", "Googlebot-Image", "Googlebot-News", "Googlebot-Video"], "bot_name": "Googlebot", "vendor": "google", "category": "search"},
+  {"tokens": ["BingBot", "bingbot", "msnbot", "msnbot-media", "MicrosoftPreview"], "bot_name": "Bing", "vendor": "microsoft", "category": "search"},
+  {"tokens": ["Amazonbot"], "bot_name": "Amazon", "vendor": "amazon", "category": "search"},
+  {"tokens": ["Applebot-Extended"], "bot_name": "Applebot-Extended", "vendor": "apple", "category": "training"},
+  {"tokens": ["Applebot"], "bot_name": "Apple", "vendor": "apple", "category": "search"},
+  {"tokens": ["meta-externalagent", "FacebookBot", "meta-externalfetcher"], "bot_name": "Meta", "vendor": "meta", "category": "training"},
+  {"tokens": ["xai", "grok"], "bot_name": "Grok", "vendor": "xai", "category": "answer"},
+  {"tokens": ["DuckAssistBot"], "bot_name": "DuckDuckGo", "vendor": "duckduckgo", "category": "answer"},
+  {"tokens": ["DuckDuckBot", "DuckDuckGo-Favicons-Bot"], "bot_name": "DuckDuckGo", "vendor": "duckduckgo", "category": "search"},
+  {"tokens": ["Bytespider"], "bot_name": "Bytespider", "vendor": "bytedance", "category": "search"},
+  {"tokens": ["CCBot"], "bot_name": "CCBot", "vendor": "commoncrawl", "category": "training"},
+  {"tokens": ["cohere-ai", "cohere-training-data-crawler"], "bot_name": "Cohere", "vendor": "cohere", "category": "training"},
+  {"tokens": ["Timpibot"], "bot_name": "Timpi", "vendor": "timpi", "category": "training"},
+  {"tokens": ["YouBot"], "bot_name": "You.com", "vendor": "you", "category": "search"},
+  {"tokens": ["Kimi-User"], "bot_name": "Kimi-User", "vendor": "moonshot", "category": "answer"},
+  {"tokens": ["Kimi-SearchBot"], "bot_name": "Kimi-SearchBot", "vendor": "moonshot", "category": "search"},
+  {"tokens": ["KimiBot"], "bot_name": "KimiBot", "vendor": "moonshot", "category": "training"},
+  {"tokens": ["HySpider"], "bot_name": "HySpider", "vendor": "tencent", "category": "training"},
+  {"tokens": ["GLMBot"], "bot_name": "GLMBot", "vendor": "zhipu", "category": "training"},
+  {"tokens": ["Baiduspider-render"], "bot_name": "Baiduspider-render", "vendor": "baidu", "category": "search"},
+  {"tokens": ["Baiduspider"], "bot_name": "Baiduspider", "vendor": "baidu", "category": "search"},
+  {"tokens": ["360Spider"], "bot_name": "360Spider", "vendor": "360", "category": "search"},
+  {"tokens": ["Sogou web spider", "Sogou spider"], "bot_name": "Sogou spider", "vendor": "sogou", "category": "search"},
 ];
+
+const escapeToken = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const AI_BOT_REGEX = `(?:^|[\\s;(])(?:${BOT_CATALOG.flatMap(b => b.tokens).map(escapeToken).join('|')})(?=$|[\\s;/),])`;
+const rules = BOT_CATALOG.map(b => ({ ...b, token: new RegExp(`(?:^|[\\s;(])(?:${b.tokens.map(escapeToken).join('|')})(?=$|[\\s;/),])`, 'i') }));
 
 export function detectBot(ua: string): BotInfo | null {
   if (!ua) return null;
-  for (const b of BOTS) {
-    if (b.token.test(ua)) return { bot_name: b.bot_name, vendor: b.vendor, category: b.category };
+  const products = ua.replace(/https?:\/\/[^\s;)]+/gi, '');
+  for (const b of rules) {
+    if (b.token.test(products)) return { bot_name: b.bot_name, vendor: b.vendor, category: b.category };
   }
   return null;
 }
@@ -65,6 +68,3 @@ export function isBot(ua: string): boolean {
   if (!ua) return true; // a pageview with no User-Agent = script/bot
   return GENERIC_BOT_RE.test(ua) || detectBot(ua) !== null;
 }
-
-// Single regex (union of the tokens) for the site-side snippets: a quick filter before sending.
-export const AI_BOT_REGEX = 'GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Googlebot|Google-Extended|GoogleOther|Google-CloudVertexBot|Google-NotebookLM|bingbot|BingBot|Amazonbot|Applebot|meta-externalagent|FacebookBot|Bytespider|CCBot|DuckAssistBot|DuckDuckBot|YouBot|cohere-ai|xai|grok';

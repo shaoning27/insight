@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { withCrawlerLock } from './crawler-lock.ts';
 
 const dir = (): string => (process.env.SQLITE_PATH ? path.dirname(process.env.SQLITE_PATH) : '/data');
 const file = (): string => path.join(dir(), 'sites.json');
@@ -18,6 +19,8 @@ export interface Site {
   stripeKey?: string;
   ga4?: Ga4Config;
   shareToken?: string;
+  crawlerTokenHash?: string;
+  crawlerLogsEnabled?: boolean;
 }
 
 export interface PublicSite {
@@ -37,19 +40,42 @@ export function toPublic(s: Site): PublicSite {
 
 export async function listSites(): Promise<Site[]> {
   try {
-    return JSON.parse(await fs.readFile(file(), 'utf8')) as Site[];
-  } catch {
-    return [];
+    const sites = JSON.parse(await fs.readFile(file(), 'utf8'));
+    if (!Array.isArray(sites)) throw new Error('Invalid site configuration');
+    return sites as Site[];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
   }
 }
 
-async function save(sites: Site[]): Promise<void> {
-  await fs.mkdir(dir(), { recursive: true });
-  await fs.writeFile(file(), JSON.stringify(sites), 'utf8');
+// The deployment has one application process. Serialize every read/modify/write,
+// then atomically replace the file so readers never see partial JSON.
+const shared = globalThis as typeof globalThis & { insightSiteMutation?: Promise<unknown> };
+shared.insightSiteMutation ??= Promise.resolve();
+function mutateSites<T>(change: (sites: Site[]) => T): Promise<T> {
+  const run = shared.insightSiteMutation!.then(async () => {
+    const sites = await listSites();
+    const result = change(sites);
+    await fs.mkdir(dir(), { recursive: true, mode: 0o700 });
+    const temporary = `${file()}.${process.pid}.${randomBytes(8).toString('hex')}.tmp`;
+    try {
+      await fs.writeFile(temporary, JSON.stringify(sites), { mode: 0o600, flag: 'wx' });
+      await fs.rename(temporary, file());
+    } finally { await fs.rm(temporary, { force: true }); }
+    return result;
+  });
+  shared.insightSiteMutation = run.catch(() => undefined);
+  return run;
 }
-
+async function changeSite<T>(id: string, change: (site: Site) => T): Promise<T | undefined> {
+  return mutateSites(sites => {
+    const site = sites.find(s => s.id === id);
+    return site ? change(site) : undefined;
+  });
+}
 export async function getSite(id: string): Promise<Site | undefined> {
-  return (await listSites()).find((s) => s.id === id);
+  return (await listSites()).find(s => s.id === id);
 }
 
 const host = (u: string): string => {
@@ -75,86 +101,62 @@ function slug(name: string): string {
 }
 
 export async function addSite(name: string, url?: string): Promise<Site> {
-  const sites = await listSites();
-  let id = slug(name);
-  if (sites.some((s) => s.id === id)) id = `${id}-${randomBytes(2).toString('hex')}`;
-  const site: Site = { id, name: name.trim().slice(0, 60) || id, createdAt: Date.now(), url: url?.trim() || undefined };
-  sites.push(site);
-  await save(sites);
-  return site;
+  return mutateSites(sites => {
+    let id = slug(name);
+    if (sites.some(s => s.id === id)) id = `${id}-${randomBytes(4).toString('hex')}`;
+    const site: Site = { id, name: name.trim().slice(0, 60) || id, createdAt: Date.now(), url: url?.trim() || undefined };
+    sites.push(site);
+    return site;
+  });
 }
-
 export async function setSiteUrl(id: string, url: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  s.url = url.trim() || undefined;
-  await save(sites);
+  await withCrawlerLock(id, () => changeSite(id, s => {
+    const next = url.trim() || undefined;
+    if (host(s.url ?? '').toLowerCase() !== host(next ?? '').toLowerCase()) {
+      s.crawlerLogsEnabled = false;
+      delete s.crawlerTokenHash;
+    }
+    s.url = next;
+  }));
 }
-
 export async function setFavicon(id: string, faviconType: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  s.faviconType = faviconType;
-  await save(sites);
+  await changeSite(id, s => { s.faviconType = faviconType; });
 }
-
 export async function removeSite(id: string): Promise<void> {
-  await save((await listSites()).filter((s) => s.id !== id));
+  await withCrawlerLock(id, () => mutateSites(sites => { const index = sites.findIndex(s => s.id === id); if (index >= 0) sites.splice(index, 1); }));
 }
-
 export async function setStripeKey(id: string, key: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  s.stripeKey = key;
-  await save(sites);
+  await changeSite(id, s => { s.stripeKey = key; });
 }
-
 export async function clearStripeKey(id: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  delete s.stripeKey;
-  await save(sites);
+  await changeSite(id, s => { delete s.stripeKey; });
 }
-
-// Public share link. The token is the only credential, so it is long and random.
 export async function setShareToken(id: string): Promise<string | undefined> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return undefined;
-  s.shareToken = randomBytes(16).toString('hex');
-  await save(sites);
-  return s.shareToken;
+  return changeSite(id, s => { s.shareToken = randomBytes(16).toString('hex'); return s.shareToken; });
 }
-
 export async function clearShareToken(id: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  delete s.shareToken;
-  await save(sites);
+  await changeSite(id, s => { delete s.shareToken; });
 }
-
 export async function getSiteByShareToken(token: string): Promise<Site | undefined> {
   if (!token || !/^[a-f0-9]{32}$/.test(token)) return undefined;
-  return (await listSites()).find((s) => s.shareToken === token);
+  return (await listSites()).find(s => s.shareToken === token);
 }
-
 export async function setGa4(id: string, cfg: Ga4Config): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  s.ga4 = cfg;
-  await save(sites);
+  await changeSite(id, s => { s.ga4 = cfg; });
 }
-
 export async function clearGa4(id: string): Promise<void> {
-  const sites = await listSites();
-  const s = sites.find((x) => x.id === id);
-  if (!s) return;
-  delete s.ga4;
-  await save(sites);
+  await changeSite(id, s => { delete s.ga4; });
+}
+export async function setCrawlerConfig(id: string, update: { tokenHash?: string | null; enabled?: boolean }): Promise<void> {
+  const result = await changeSite(id, s => {
+    if (update.tokenHash === null) delete s.crawlerTokenHash;
+    else if (update.tokenHash !== undefined) {
+      if (!/^[a-f0-9]{64}$/.test(update.tokenHash)) throw new Error('Invalid token digest');
+      s.crawlerTokenHash = update.tokenHash;
+    }
+    if (update.enabled !== undefined) s.crawlerLogsEnabled = update.enabled;
+    if (s.crawlerLogsEnabled && (!s.crawlerTokenHash || !host(s.url ?? ''))) throw new Error('Site URL and token required');
+    return true;
+  });
+  if (!result) throw new Error('Site not found');
 }

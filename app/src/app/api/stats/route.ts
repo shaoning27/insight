@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { queryRows } from '@/lib/clickhouse';
+import { CRAWLER_COUNT_SQL } from '@/lib/crawler-events';
 import { validSession, validApiToken, bearerFrom, publicRead } from '@/lib/auth';
 import { getSite } from '@/lib/sites';
 import { getJson } from '@/lib/settings';
@@ -42,9 +43,9 @@ interface AiSeriesRow { d: string; bot: string; c: string }
 async function aiData(filter: string, params: Record<string, unknown> | undefined, days: number, winExpr?: string): Promise<{ ai: Ai[]; aiSeries: AiSeriesPoint[]; aiBots: string[] }> {
   const win = winExpr ?? `ts >= now() - INTERVAL ${days} DAY`;
   const [rows, pageRows, seriesRows] = await Promise.all([
-    queryRows<CountRow>(`SELECT bot_name AS key, any(vendor) AS vendor, any(category) AS category, count() AS c, max(ts) AS last_ts FROM ai_hits WHERE ${win}${filter} GROUP BY bot_name ORDER BY c DESC LIMIT 30`, params),
-    queryRows<AiPageRow>(`SELECT bot_name AS bot, path, count() AS c FROM ai_hits WHERE ${win}${filter} GROUP BY bot_name, path ORDER BY c DESC LIMIT 400`, params),
-    queryRows<AiSeriesRow>(`SELECT toString(toDate(ts)) AS d, bot_name AS bot, count() AS c FROM ai_hits WHERE ${win}${filter} GROUP BY d, bot ORDER BY d`, params),
+    queryRows<CountRow>(`SELECT bot_name AS key, any(vendor) AS vendor, any(category) AS category, ${CRAWLER_COUNT_SQL} AS c, max(ts) AS last_ts FROM ai_hits WHERE ${win}${filter} GROUP BY bot_name ORDER BY c DESC LIMIT 30`, params),
+    queryRows<AiPageRow>(`SELECT bot_name AS bot, path, ${CRAWLER_COUNT_SQL} AS c FROM ai_hits WHERE ${win}${filter} GROUP BY bot_name, path ORDER BY c DESC LIMIT 400`, params),
+    queryRows<AiSeriesRow>(`SELECT toString(toDate(ts)) AS d, bot_name AS bot, ${CRAWLER_COUNT_SQL} AS c FROM ai_hits WHERE ${win}${filter} GROUP BY d, bot ORDER BY d`, params),
   ]);
   const pagesByBot = new Map<string, { name: string; count: number }[]>();
   for (const r of pageRows) {

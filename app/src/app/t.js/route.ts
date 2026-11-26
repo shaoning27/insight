@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 // The cookieless tracker. Served by a route (not a static file) so we can inspect the
 // User-Agent of EVERY request: AI crawlers (ChatGPT, Perplexity, Google...) don't run the
-// JS but often fetch the script referenced in the page. We detect them here, server-side,
-// with no code to add on the sites themselves. The site and page come from the Referer.
+// JS, and some request this script. This observes only those script requests.
+// Sites in log mode use authenticated HTML logs instead, avoiding double counting.
 const SCRIPT = `/* Insight — cookieless analytics. */
 (function () {
   var s = document.currentScript;
@@ -173,7 +173,7 @@ export async function GET(req: Request) {
     } catch {
       /* no usable Referer */
     }
-    if (site) {
+    if (site && !site.crawlerLogsEnabled) {
       try {
         await insertRows('ai_hits', [{
           site_id: site.id,
